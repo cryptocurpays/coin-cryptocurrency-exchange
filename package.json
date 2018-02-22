@@ -19,5 +19,9 @@
     "passport": "^0.2.2",
     "passport-local": "^1.0.0",
     "web3": "^0.16.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/JeremywangCN/coin-cryptocurrency-exchange.git"
   }
 }
