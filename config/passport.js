@@ -3,11 +3,15 @@
 // load all the things we need
 var LocalStrategy   = require('passport-local').Strategy;
 
+var keystore = require('./../app/keystore')
+
 // load up the user model
 var mysql = require('mysql');
 var bcrypt = require('bcrypt-nodejs');
 var dbconfig = require('./database');
 var connection = mysql.createConnection(dbconfig.connection);
+const fs = require('fs');
+
 
 connection.query('USE ' + dbconfig.database);
 // expose this function to our app using module.exports
@@ -56,6 +60,7 @@ module.exports = function(passport) {
                 } else {
                     // if there is no user with that username
                     // create the user
+
                     var newUserMysql = {
                         username: username,
                         password: bcrypt.hashSync(password, null, null)  // use the generateHash function in our user model
@@ -65,9 +70,11 @@ module.exports = function(passport) {
 
                     connection.query(insertQuery,[newUserMysql.username, newUserMysql.password],function(err, rows) {
                         newUserMysql.id = rows.insertId;
-
+                        console.log('The new user is created successful!');
                         return done(null, newUserMysql);
                     });
+
+                    keystore.updateUserToAddress(username);
                 }
             });
         })
@@ -88,6 +95,9 @@ module.exports = function(passport) {
             passReqToCallback : true // allows us to pass back the entire request to the callback
         },
         function(req, username, password, done) { // callback with email and password from our form
+
+
+
             connection.query("SELECT * FROM users WHERE username = ?",[username], function(err, rows){
                 if (err)
                     return done(err);

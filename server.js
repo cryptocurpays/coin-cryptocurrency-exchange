@@ -9,15 +9,28 @@ var bodyParser = require('body-parser');
 var morgan = require('morgan');
 var app      = express();
 var port     = process.env.PORT || 8080;
-
 var passport = require('passport');
 var flash    = require('connect-flash');
+var ethConfig = require('./config/ethereum');
+
+
+// Initiate Ethereum Keystore and Eth Web3 instance. Start to check node for new unrecorded transactions.
+var keystore = require('./app/keystore');
+var Eth = require('./app/eth_transactions');
+keystore.init(function (ifSucceed,ksi) {
+    if(ifSucceed){
+        Eth.init();
+    }
+});
+
+setInterval(function () {
+    Eth.checkBlockChainForMinedTxService();
+},ethConfig.ethDepositCheckInterval);
 
 // configuration ===============================================================
 // connect to our database
 
 require('./config/passport')(passport); // pass passport for configuration
-
 
 
 // set up our express application
@@ -39,6 +52,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session()); // persistent login sessions
 app.use(flash()); // use connect-flash for flash messages stored in session
+
 
 
 // routes ======================================================================
