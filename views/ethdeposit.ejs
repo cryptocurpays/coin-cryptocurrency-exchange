@@ -1,6 +1,7 @@
 <!-- views/profile.ejs -->
 <!doctype html>
 <html>
+
 <head>
 	<title>Coins and Cryptocurrency Exchange</title>
 	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
@@ -25,10 +26,10 @@
 				<h3><span class="fa fa-user"></span> Local</h3>
 
 					<p>
-						<strong>id</strong>: <%= user.id %><br>
 						<strong>username</strong>: <%= user.username %><br>
-						<strong>coin amount</strong>: <%= user.coin %>
-					</p>
+						<strong>coin amount</strong>: <%= user.coin %><br>
+                        <strong>imageURL</strong>: <%= imgUrl %><br>
+                    </p>
 
 			</div>
 			<div class="page-header text-center">
@@ -39,6 +40,19 @@
 
 	</div>
 
+    <canvas id="QRCODE"></canvas>
+
+    <script type="text/javascript">
+        var myCanvas = document.getElementById('QRCODE');
+        var ctx = myCanvas.getContext('2d');
+        var img = new Image;
+        img.onload = function(){
+            ctx.drawImage(img,0,0); // Or at whatever offset you like
+        };
+        img.src = imgUrl;
+    </script>
 </div>
+
 </body>
+
 </html>

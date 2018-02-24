@@ -83,6 +83,7 @@ function checkBlockChainForMinedTxService() {
         else
             depositTransactionsToAccounts(recipientAddresses,latestCheckedBlock+1,latestMinedBlock-ETHCONFIG.minMinedRequirement);
     }
+
     for(var i=0; i<unMinedWithdrawTxs.length;i++){
         var tx = web3.eth.getTransaction(unMinedWithdrawTxs[i].tx_hash);
         if (tx != null) {

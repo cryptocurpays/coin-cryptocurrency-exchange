@@ -69,6 +69,26 @@ module.exports = function(app, passport) {
 		req.logout();
 		res.redirect('/');
 	});
+
+	//Ethereum Deposit Page. Bar Code that allow users to scan.
+    app.get('/ethdeposit', function(req, res) {
+
+        // render the page and pass in any flash data if it exist
+        var QRCode = require('qrcode')
+
+        QRCode.toDataURL('asfsadfsdfasdfdsfsda!', function (err, url) {
+            console.log('Image URL is '+url);
+            res.render('ethdeposit.ejs', { user: req.user, imgUrl: url});
+        })
+
+    });
+
+    app.get('/qrtest', function(req, res) {
+        // render the page and pass in any flash data if it exists
+        res.render('qrtest.html');
+    });
+
+
 };
 
 // route middleware to make sure

@@ -1,0 +1,12 @@
+<script src="../node_modules/qrcode/build/qrcode.min.js"></script>
+<canvas id="qrcodec"></canvas>
+
+
+<script>
+    qrcodelib.toCanvas(document.getElementById('qrcodec'), "your eth address", function (error) {
+        if (error) console.error(error)
+        console.log('qrcode successfully created');
+    });
+
+
+</script>

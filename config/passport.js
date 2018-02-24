@@ -63,7 +63,7 @@ module.exports = function(passport) {
 
                     var newUserMysql = {
                         username: username,
-                        password: bcrypt.hashSync(password, null, null)  // use the generateHash function in our user model
+                        coin: 0
                     };
 
                     var insertQuery = "INSERT INTO users ( username, password ) values (?,?)";
