@@ -1,5 +1,9 @@
 // app/routes.js
 module.exports = function(app, passport) {
+	app.use(function(req, res, next){
+
+		next();
+	});
 
 	// =====================================
 	// HOME PAGE (with login links) ========
@@ -57,6 +61,9 @@ module.exports = function(app, passport) {
 	// we will want this protected so you have to be logged in to visit
 	// we will use route middleware to verify this (the isLoggedIn function)
 	app.get('/profile', isLoggedIn, function(req, res) {
+		console.log(req.session.id)
+
+
 		res.render('profile.ejs', {
 			user : req.user // get the user out of session and pass to template
 		});
@@ -70,25 +77,89 @@ module.exports = function(app, passport) {
 		res.redirect('/');
 	});
 
-	//Ethereum Deposit Page. Bar Code that allow users to scan.
-    app.get('/ethdeposit', function(req, res) {
-
-        // render the page and pass in any flash data if it exist
-        var QRCode = require('qrcode')
-
-        QRCode.toDataURL('asfsadfsdfasdfdsfsda!', function (err, url) {
-            console.log('Image URL is '+url);
-            res.render('ethdeposit.ejs', { user: req.user, imgUrl: url});
-        })
-
-    });
 
     app.get('/qrtest', function(req, res) {
         // render the page and pass in any flash data if it exists
         res.render('qrtest.html');
     });
 
+	//Leo 绘制eth转账二维码界面
+	app.get('/ethdeposit', function(req, res) {
+		// render the page and pass in any flash data if it exist
+		var QRCode = require('qrcode')
+		var MYSQL = require('mysql');
+		var DBCONFIG = require('./../config/database');
+		// System variables
+		var connection = MYSQL.createConnection(DBCONFIG.connection);
 
+		connection.query("SELECT * FROM "+DBCONFIG.database+ ".users Where username = '"+req.user.username+"'", function(err, rows){
+			if (err){
+				console.log(err);
+				return done(false);
+			}
+			if (rows.length==0){
+				console.log("This address belongs to nobody!");
+				return done(false);
+			}
+			//console.log(rows);
+
+
+			QRCode.toDataURL(rows[0].eth_address, function (err, url) {
+				console.log('Image URL is '+url);
+				res.render('ethdeposit.ejs', { user: req.user, imgUrl: url});
+			})
+			//return done(true, rows);
+		});
+
+
+
+	});
+
+	//Leo  eth转出接口
+	app.post('/ethdeout',function(req, res){
+		console.log(req.body);
+
+		var QRCode = require('qrcode');
+		var MYSQL = require('mysql');
+		var DBCONFIG = require('./../config/database');
+		var ethConfig = require('./../config/ethereum');
+		// System variables
+		var connection = MYSQL.createConnection(DBCONFIG.connection);
+		var Eth = require('./../app/eth_transactions');
+
+		connection.query("SELECT * FROM "+DBCONFIG.database+ ".users Where username = '"+req.user.username+"'", function(err, rows){
+			if (err){
+				console.log(err);
+				return done(false);
+			}
+			if (rows.length==0){
+				console.log("This address belongs to nobody!");
+				return done(false);
+			}
+			//console.log(rows);
+
+			if(rows[0].coin < req.body.amount){
+				//res.render('profile.ejs', {
+				//	user : req.user, // get the user out of session and pass to template
+				//	out : false
+				//});
+			}
+			console.log("amount="+req.body.amount);
+			Eth.withdrawEth(req.user,req.body.address,req.body.amount)
+
+			QRCode.toDataURL(rows[0].eth_address, function (err, url) {
+				console.log('Image URL is '+url);
+				res.render('ethdeposit.ejs', { user: req.user, imgUrl: url});
+			})
+
+
+
+		});
+
+
+
+
+	});
 };
 
 // route middleware to make sure
