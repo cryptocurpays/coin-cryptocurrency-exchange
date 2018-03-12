@@ -1,5 +1,6 @@
 # Complete Guide to Coin and Cryptocurrecny Exchange Demo
 
+This is an onging project.
 
 Current version database is ported to MySQL
 
