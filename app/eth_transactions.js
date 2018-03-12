@@ -11,7 +11,7 @@ var ETHCONFIG = require('./../config/ethereum');
 var connection = MYSQL.createConnection(DBCONFIG.connection);
 var web3;
 var latestCheckedBlock;
-var recipientAddresses;
+var recipientAddresses = [];
 var unMinedWithdrawTxs = [];
 
 

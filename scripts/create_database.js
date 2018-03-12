@@ -50,6 +50,31 @@ connection.query("CREATE TABLE `" + dbconfig.database + '`.`' + dbconfig.eth_wit
     PRIMARY KEY (`id`))");
 
 
+connection.query('\
+CREATE TABLE `' + dbconfig.database + '`.`' + dbconfig.bch_transaction + '` ( \
+    `txhash` VARCHAR(100), \
+    `to_address` VARCHAR(50) NOT NULL, \
+    `to_user_id` VARCHAR(50) NOT NULL, \
+    `value` BIGINT DEFAULT 0, \
+    `blocknumber` INT,\
+    `timestamp` TIMESTAMP, \
+    PRIMARY KEY (`txhash`), \
+    INDEX `to_user_id` (`to_user_id` ASC) \
+)');
+
+
+connection.query("CREATE TABLE `" + dbconfig.database + '`.`' + dbconfig.bch_withdraw_log + "` ( \
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,\
+    `tx_status` INT DEFAULT 0 ,\
+    `tx_hash` VARCHAR(100), \
+    `from_address` VARCHAR(50) NOT NULL, \
+    `to_address` VARCHAR(50) NOT NULL, \
+    `to_user_id` VARCHAR(50) NOT NULL, \
+    `bch_value` BIGINT DEFAULT 0, \
+    `coin_value` INT DEFAULT 0, \
+    `block_number` INT,\
+    `timestamp` TIMESTAMP, \
+    PRIMARY KEY (`id`))");
 
 console.log('Success: Database Created!');
 

@@ -23,8 +23,21 @@ keystore.init(function (ifSucceed,ksi) {
     }
 });
 
+// Init BCH HD Public key and wallet accounts
+var BCH = require('./app/bch_transactions');
+var bchKeyUtils= require('./service/keystorebch');
+bchKeyUtils.init(function (err) {
+    if(err);
+    else
+        BCH.updateUnspentTx();
+});
+
+BCH.initRecipientAddresses();
+
 setInterval(function () {
     Eth.checkBlockChainForMinedTxService();
+    BCH.checkBlockChainForDepositTx();
+    BCH.updateSubmittedWithdrawTxs();
 },ethConfig.ethDepositCheckInterval);
 
 // configuration ===============================================================

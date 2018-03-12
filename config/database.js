@@ -8,5 +8,7 @@ module.exports = {
 	'database': 'my_schema',
     'users_table': 'users',
     'ethereum_transaction':'eth_transaction',
-    "eth_withdraw_log":'eth_withdraw_log'
+    'bch_transaction':'bch_transaction',
+    "eth_withdraw_log":'eth_withdraw_log',
+    "bch_withdraw_log":'bch_withdraw_log'
 };

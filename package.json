@@ -5,7 +5,12 @@
     "start": "node ./server"
   },
   "dependencies": {
+    "axios": "^0.18.0",
+    "bchaddrjs": "^0.2.1",
     "bcrypt-nodejs": "0.0.3",
+    "npm-address-translator": "^1.0.4",
+    "qr-image": "^3.2.0",
+    "bitcoincashjs": "^0.1.10",
     "bitcore-lib": "^0.15.0",
     "body-parser": "^1.13.1",
     "connect-flash": "^0.1.1",

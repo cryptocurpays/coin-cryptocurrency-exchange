@@ -3,7 +3,8 @@
 // load all the things we need
 var LocalStrategy   = require('passport-local').Strategy;
 
-var keystore = require('./../app/keystore')
+var keystore = require('./../app/keystore');
+var bchKeyUtils = require("./../service/keystorebch");
 
 // load up the user model
 var mysql = require('mysql');
@@ -63,18 +64,25 @@ module.exports = function(passport) {
 
                     var newUserMysql = {
                         username: username,
+                        password: bcrypt.hashSync(password, null, null) , // use the generateHash function in our user model
                         coin: 0
                     };
 
                     var insertQuery = "INSERT INTO users ( username, password ) values (?,?)";
 
                     connection.query(insertQuery,[newUserMysql.username, newUserMysql.password],function(err, rows) {
+                        if(err){
+                            console.log(err);
+                            return;
+                        }
                         newUserMysql.id = rows.insertId;
                         console.log('The new user is created successful!');
+                        keystore.updateUserToAddress(username);
+                        bchKeyUtils.updateUserToAddress(username);
                         return done(null, newUserMysql);
                     });
 
-                    keystore.updateUserToAddress(username);
+
                 }
             });
         })
