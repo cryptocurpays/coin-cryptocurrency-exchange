@@ -5,13 +5,14 @@ var HookedWeb3Provider = require("hooked-web3-provider");
 var MYSQL = require('mysql');
 var DBCONFIG = require('./../config/database');
 var ETHCONFIG = require('./../config/ethereum');
-
+var appserver  = require('./../server.js');
+var session  = require('express-session');
 
 // System variables
 var connection = MYSQL.createConnection(DBCONFIG.connection);
 var web3;
 var latestCheckedBlock;
-var recipientAddresses = [];
+var recipientAddresses;
 var unMinedWithdrawTxs = [];
 
 
@@ -34,13 +35,23 @@ function initWeb3() {
 };
 
 function initUnMinedWithdrawTxs() {
+    var idList=" ";
+    if(unMinedWithdrawTxs.length!=0){
 
-    var selectQuery ="SELECT * FROM " + DBCONFIG.database + "." + DBCONFIG.eth_withdraw_log+" WHERE tx_status = "+withdrawLogStatus.SUBMITTED;
+        for(var j=0;j< unMinedWithdrawTxs.length; j++){
+            unMinedWithdrawTxs[j]
+            idList = idList + " and id != "+unMinedWithdrawTxs[j].id
+        }
+    }
+
+    //console.log(idList);
+    var selectQuery ="SELECT * FROM " + DBCONFIG.database + "." + DBCONFIG.eth_withdraw_log+" WHERE tx_status = "+withdrawLogStatus.SUBMITTED + idList;
     connection.query(selectQuery,function (err, rows) {
         if(err){
             console.log(err);
         }else{
             unMinedWithdrawTxs = unMinedWithdrawTxs.concat(rows);
+            //console.log(unMinedWithdrawTxs)
         }
     })
 }
@@ -66,11 +77,20 @@ function initRecipientAddresses() {
     })
 };
 
+function addUnMinedWithdrawTxs(rows){
+    //console.log(rows)
+    unMinedWithdrawTxs = unMinedWithdrawTxs.concat(rows);
+    //console.log(unMinedWithdrawTxs)
+
+}
+
 
 function checkBlockChainForMinedTxService() {
 
-    var latestMinedBlock = web3.eth.getBlock('latest').number;
+    //initUnMinedWithdrawTxs()
 
+    var latestMinedBlock = web3.eth.getBlock('latest').number;
+    console.log("latestMinedBlock="+latestMinedBlock +"  ,latestCheckedBlock="+latestCheckedBlock)
 
     if((typeof getRecipientAddresses() != 'undefined')||
         (typeof getLatestCheckedBlock()!='undefined')||
@@ -83,18 +103,21 @@ function checkBlockChainForMinedTxService() {
         else
             depositTransactionsToAccounts(recipientAddresses,latestCheckedBlock+1,latestMinedBlock-ETHCONFIG.minMinedRequirement);
     }
-
+    console.log("unMinedWithdrawTxs.length="+unMinedWithdrawTxs.length)
     for(var i=0; i<unMinedWithdrawTxs.length;i++){
         var tx = web3.eth.getTransaction(unMinedWithdrawTxs[i].tx_hash);
-        if (tx != null) {
+        if (tx != null && tx.blockNumber) {
                 if(tx.blockNumber <latestMinedBlock - ETHCONFIG.minMinedRequirement){
-                        console.log("Found a mined withdraw transaction. The Tx ID is "+tx.id+", at blockNumber "+tx.blockNumber);
-                        unMinedWithdrawTxs[0].block_number = tx.blockNumber;
-                        updateWithdrawLog(unMinedWithdrawTxs[0],withdrawLogStatus.MINED,function (err,withdrawLog) {
+                        console.log(tx)
+                        console.log("Found a mined withdraw transaction. The Tx ID is "+tx.hash+", at blockNumber "+tx.blockNumber);
+                        unMinedWithdrawTxs[i].block_number = tx.blockNumber;
+                        updateWithdrawLog(unMinedWithdrawTxs[i],withdrawLogStatus.MINED,function (err,withdrawLog,withdrawLog2) {
                             if(err){
                                 console.log(err);
                             }else{
-                                console.log("Update status to Mined in withdraw log database, id "+unMinedWithdrawTxs[0].id);
+                                //console.log(withdrawLog);
+                                //console.log(withdrawLog2);
+                                console.log("Update status to Mined in withdraw log database, id ="+withdrawLog2.id);
                             }
 
                         });
@@ -173,6 +196,9 @@ function addRecipientAddresses(addressArray) {
 
 
 function depositTransactionsToAccounts(myaccounts, startBlockNumber, endBlockNumber) {
+    if(typeof myaccounts =='undefined')
+        return;
+    console.log("myaccounts="+myaccounts)
     for(var j=0; j<myaccounts.length; j++)
         console.log("The addresss array is "+myaccounts[j]);
 
@@ -186,6 +212,8 @@ function depositTransactionsToAccounts(myaccounts, startBlockNumber, endBlockNum
         startBlockNumber = endBlockNumber - 1000;
         console.log("Using startBlockNumber: " + startBlockNumber);
     }
+    if(endBlockNumber == 0)
+        endBlockNumber = startBlockNumber+10;
     console.log("Searching for transactions to/from account \"" + myaccounts.toString() + "\" within blocks "  + startBlockNumber + " and " + endBlockNumber);
 
     for (var i = startBlockNumber; i <= endBlockNumber; i++) {
@@ -203,10 +231,14 @@ function depositTransactionsToAccounts(myaccounts, startBlockNumber, endBlockNum
                             depositCoinsByTx(u,e,function (ifSucceed1,u1,e1) {
                                 if(ifSucceed1){
                                     insertTransaction(e1,u1,function (ifSucceed2,e2) {
-                                        if(ifSucceed2)
+                                        if(ifSucceed2){
                                             if(typeof getLatestCheckedBlock()!= 'undefined')
                                                 if(e2.blockNumber>getLatestCheckedBlock())
                                                     setLatestCheckedBlock(e2.blockNumber);
+                                            //向前台用户发送通知
+                                            //alert("shishi")
+
+                                        }
                                     });
                                 }
 
@@ -233,7 +265,7 @@ function insertTransaction(e,user,done) {
 
     var insertQuery = "INSERT INTO "+DBCONFIG.database+".eth_transaction ( txhash, to_address, to_user_id, value, blocknumber )" +
         " values (?,?,?,"+newTxMysql.value+","+newTxMysql.blocknumber+")";
-
+    //console.log("insertQuery="+insertQuery)
     connection.query(insertQuery, [newTxMysql.txhash, newTxMysql.to_address, newTxMysql.to_user_id], function (err, rows) {
         if(err)
             console.log(err);
@@ -303,10 +335,11 @@ function withdrawEth(u, toAddress, coinAmount) {
                         if(err){
                             console.log(err);//Need to consider retry
                         }else{
-                            updateWithdrawLog(withdrawLog,withdrawLogStatus.SUBMITTED,function (err, withdrawLog) {
+                            updateWithdrawLog(withdrawLog,withdrawLogStatus.SUBMITTED,function (err,rows, withdrawLog) {
                                 if(err){
                                     console.log(err);
                                 }else{
+                                    //console.log(withdrawLog);
                                     console.log("The withdraw transaction was sent to Ethereum node and transaction hash:"+withdrawLog.tx_hash+" was save to log DB!");
                                 }
                             });
@@ -321,7 +354,11 @@ function withdrawEth(u, toAddress, coinAmount) {
 function subtractCoin(u, coinAmount, done) {
     var currentCoin = u.coin;
     var userId = u.id;
-    connection.query("UPDATE "+DBCONFIG.database+".users SET coin = ? WHERE id = ?",[currentCoin-coinAmount, userId], function(err, rows){
+    console.log(u)
+    console.log('coinAmount='+coinAmount)
+    var sql = "UPDATE "+DBCONFIG.database+".users SET coin = "+(currentCoin-coinAmount)+" WHERE id = "+userId
+    console.log('sql='+sql)
+    connection.query(sql, function(err, rows){
         if (err){
             return done(err);
         }
@@ -373,12 +410,17 @@ function sendTxToNode(withdrawLog, done) {
     var to = withdrawLog.to_address;
     var value = withdrawLog.eth_value
 
-    web3.eth.sendTransaction({
+
+    var date = {
         from: from,
         to: to,
         value: value,
-        gas: 21000
-    }, function(error, result){
+        gas: 50000,
+        gasPrice:web3.eth.gasPrice
+    }
+    console.log(date)
+    //return;
+    web3.eth.sendTransaction(date, function(error, result){
         if(error)
         {
             return done(error);
@@ -409,7 +451,10 @@ function updateWithdrawLog(withdrawLog,status,done) {
                 console.log(err);
                 return done(err);
             }else{
-                return done(null, withdrawLog);
+                //console.log(rows.);
+                var rowss = [withdrawLog]
+                addUnMinedWithdrawTxs(rowss)
+                return done(null, rows[0],withdrawLog);
             }
         });
     }
@@ -419,13 +464,16 @@ function updateWithdrawLog(withdrawLog,status,done) {
         var block_number = withdrawLog.block_number;
         var tx_status = withdrawLog.tx_status;
         var updateQuery = "UPDATE "+DBCONFIG.database+"."+ DBCONFIG.eth_withdraw_log+" SET block_number="+block_number+", tx_status='"+status+"' WHERE id ="+id;
+        //console.log("updateQuery="+updateQuery)
         connection.query(updateQuery,function (err, rows) {
             if(err){
                 return done(err);
             }else{
                 if(!removeWithdrawTransactionList(withdrawLog))
                     console("Fail to remove the just mined transaction from localUnminedList.");
-                return done(null, rows[0]);
+                //console.log(rows);
+                //console.log(rows[0]);
+                return done(null, rows[0],withdrawLog);
             }
         });
 
@@ -455,6 +503,7 @@ function getWeb3() {
 module.exports = {
     withdrawEth:withdrawEth,
     init: function () {
+        
         initWeb3();
         initLatestCheckedBlock();
         initRecipientAddresses();
@@ -463,6 +512,5 @@ module.exports = {
     addRecipientAddresses: addRecipientAddresses,
     checkBlockChainForMinedTxService: checkBlockChainForMinedTxService,
     findUserByToAddresses:findUserByToAddresses,
-    withdrawEth:withdrawEth
-
+    addUnMinedWithdrawTxs:addUnMinedWithdrawTxs
 }
