@@ -3,7 +3,7 @@
 // load all the things we need
 var LocalStrategy   = require('passport-local').Strategy;
 
-var keystore = require('./../app/keystore');
+var keystore = require('./../service/keystoreeth');
 var bchKeyUtils = require("./../service/keystorebch");
 
 // load up the user model

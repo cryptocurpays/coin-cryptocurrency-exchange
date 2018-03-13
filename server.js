@@ -15,7 +15,7 @@ var ethConfig = require('./config/ethereum');
 
 
 // Initiate Ethereum Keystore and Eth Web3 instance. Start to check node for new unrecorded transactions.
-var keystore = require('./app/keystore');
+var keystore = require('./service/keystoreeth');
 var Eth = require('./app/eth_transactions');
 keystore.init(function (ifSucceed,ksi) {
     if(ifSucceed){

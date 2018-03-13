@@ -15,10 +15,6 @@
 	<div class="page-header text-center">
 		<h1><span class="fa fa-anchor"></span> Profile Page</h1>
 		<a href="/logout" class="btn btn-default btn-sm">Logout</a>
-		<div class="page-header text-center">
-			<!--<h3>Deposit Coins</h3>-->
-			<a href="/ethdeposit" class="btn btn-default btn-sm">Deposit Withdraw Coins</a>
-		</div>
 	</div>
 
 
@@ -33,7 +29,7 @@
 					<p>
 						<strong>id</strong>: <%= user.id %><br>
 						<strong>username</strong>: <%= user.username %><br>
-						<strong>coin amount</strong>: <%= user.coin %>
+						<strong>coin</strong>: <%= user.coin %>
 					</p>
 
 			</div>
@@ -44,6 +40,12 @@
 
 		</div>
 
+	</div>
+	<div class="page-header text-center">
+		<a href="/deposit" class="btn btn-default btn-sm">Deposit Coins</a>
+	</div>
+	<div class="page-header text-center">
+		<a href="/withdraw" class="btn btn-default btn-sm">Withdraw Coins</a>
 	</div>
 	<script>
 //		document.write('out='+document.get)

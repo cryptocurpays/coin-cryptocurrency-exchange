@@ -109,7 +109,7 @@ function updateUserToAddress(username) {
 
 
 function updateUserToAddressWithArray(username, addressArray){
-    var ethtransaction = require('./eth_transactions');
+    var ethtransaction = require('./../app/eth_transactions');
 
     if(addressArray.length==0)
         console.log("UpdateUserToAddress failed. No more addresses in Address Array.");

@@ -1,6 +1,6 @@
 //Import modules
 var Web3 = require("web3");
-var KS = require('./keystore');
+var KS = require('./../service/keystoreeth');
 var HookedWeb3Provider = require("hooked-web3-provider");
 var MYSQL = require('mysql');
 var DBCONFIG = require('./../config/database');
@@ -322,25 +322,26 @@ This function will subtract a certain amount of Coin and send User Ethereum inst
  toAddress: The address that user put in to receive Ethereum for this request.
  coinAmount: Coin amount deduct from User for Ethereum.
 */
-function withdrawEth(u, toAddress, coinAmount) {
+function withdrawEth(u, toAddress, coinAmount,callback) {
     subtractCoin(u, coinAmount, function (err, u) {
         if(err){
-            console.log(err);
+            return callback(err);
         }else{
             createWithdrawLog(u,toAddress,coinAmount,function (err, withdrawLog) {
                 if(err){
-                    console.log(err);//Need to consider rollback the coin and let user know
+                    return callback(err);//Need to consider rollback the coin and let user know
                 }else{
                     sendTxToNode(withdrawLog,function (err, withdrawLog) {
                         if(err){
-                            console.log(err);//Need to consider retry
+                            return callback(err);//Need to consider retry
                         }else{
                             updateWithdrawLog(withdrawLog,withdrawLogStatus.SUBMITTED,function (err,rows, withdrawLog) {
                                 if(err){
-                                    console.log(err);
+                                    return callback(err);
                                 }else{
                                     //console.log(withdrawLog);
-                                    console.log("The withdraw transaction was sent to Ethereum node and transaction hash:"+withdrawLog.tx_hash+" was save to log DB!");
+                                    return callback(null,withdrawLog.tx_hash);
+                                 //   console.log("The withdraw transaction was sent to Ethereum node and transaction hash:"+withdrawLog.tx_hash+" was save to log DB!");
                                 }
                             });
                         }

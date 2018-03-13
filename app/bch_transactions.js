@@ -1,17 +1,16 @@
 //Import modules
-var MYSQL = require('mysql');
-var DBCONFIG = require('./../config/database');
-var BCC = require("./../service/bitcoincashrpc");
-var BCHCONFIG = require('./../config/bchconfig');
-var BCHADDR = require('bchaddrjs');
-var DBSERVICE = require('./../service/db_service');
-var BCHkeyStore = require('./../service/keystorebch');
+const MYSQL = require('mysql');
+const DBCONFIG = require('./../config/database');
+const BCC = require("./../service/bitcoincashrpc");
+const BCHCONFIG = require('./../config/bchconfig');
+const BCHADDR = require('bchaddrjs');
+const DBSERVICE = require('./../service/db_service');
+const BCHkeyStore = require('./../service/keystorebch');
 
 
 // System variables
-var connection = MYSQL.createConnection(DBCONFIG.connection);
-var BCHRPCCLIENT = new BCC(BCHCONFIG.host, BCHCONFIG.username, BCHCONFIG.password, BCHCONFIG.port, 3000);//Bitcoin Cash RPC Connection
-var unMinedWithdrawTxs = [];
+const connection = MYSQL.createConnection(DBCONFIG.connection);
+const BCHRPCCLIENT = new BCC(BCHCONFIG.host, BCHCONFIG.username, BCHCONFIG.password, BCHCONFIG.port, 3000);//Bitcoin Cash RPC Connection
 
 //All the unspent transactions that belong to the withdraw source account.
 var unspentTxs =[];
@@ -27,27 +26,26 @@ function findRecipientAddresses(done) {
         if (err){
             return done(err);
         }
-        if (rows.length==0){
+        if (rows.length===0){
             return done("New transactions weren't found!");
         }
         return done(null, rows);
     });
-};
+}
 
 async function addRecipientAddresses(addressArray) {
-    var bch = require('bitcoincashjs');
-    var BASE58CHECK = bch.encoding.Base58Check;
-    var bitcorecash = require('bitcoincashjs');
+    const bitcorecash = require('bitcoincashjs');
+    const BASE58CHECK = bitcorecash.encoding.Base58Check;
 
-    for(var i=0;i<addressArray.length;i++){
-        var addressBase58Check;
+    for(let i=0;i<addressArray.length;i++){
+        let addressBase58Check;
 
-        if(BCHCONFIG.network==bitcorecash.Networks.testnet) {
+        if(BCHCONFIG.network===bitcorecash.Networks.testnet) {
             console.log(addressArray[i].bch_address);
             console.log("6f" + addressArray[i].bch_address.slice(2));
             addressBase58Check = BASE58CHECK.encode(new Buffer.from("6f" + addressArray[i].bch_address.slice(2), "hex"));
         }
-        else if(BCHCONFIG.network==bitcorecash.Networks.livenet){
+        else if(BCHCONFIG.network===bitcorecash.Networks.livenet){
             addressBase58Check = BASE58CHECK.encode(new Buffer("00"+addressArray[i].bch_address.slice(2),'hex'));
         }
         await BCHRPCCLIENT.importaddress(addressBase58Check.toString(),addressArray[i].username,false);
@@ -131,44 +129,41 @@ This function will subtract a certain amount of Coin and send User BCH instead.
  For example:
  withdrawBCH('8','mhREfUGuqNTpQSuPVG234kt6T9hzVYkD8Y',5000000);
 */
-function withdrawBCH(username, toAddress, coinAmount) {
+function withdrawBCH(username, toAddress, coinAmount,callback) {
     DBSERVICE.getUserByUsername(username, function (err1, data1) {
         if (err1) {
-            console.log(err1);
-            return false;
+            return callback(err1);
         }
         else {
             var newCoinValue = data1[0].coin - coinAmount;
             var user = data1[0];
             user.coin = newCoinValue;
             if (newCoinValue < 0) {
-                console.log("The user " + username + " does not have enough coins to withdraw!");
-                return false;
+                return callback("The user " + username + " does not have enough coins to withdraw!");
             }
             DBSERVICE.updateCoinByUsername(newCoinValue, username, function (err2, data2) {
                 if (err2) {
-                    console.log(err2);
+                    return callback(err2);
                 } else {
                     DBSERVICE.addBCHWithdrawLog(this.user.id, toAddress, coinAmount, withdrawLogStatus.CREATED, function (err3, data3) {
                         if (err3)
-                            console.log(err3);
+                            return callback(err3);
                         else {
                             sendTxToNode(data3, function (err4, data4) {
                                 if (err4)
-                                    console.log(err4);
+                                    return callback(err4);
                                 else {
                                     DBSERVICE.updateBCHWithdrawLogById(this.withdrawLog.id, {
                                         tx_hash: data4,
                                         tx_status: withdrawLogStatus.SUBMITTED
                                     }, function (err5, data5) {
                                         if (err5)
-                                            console.log(err5);
+                                            return callback(err5);
                                         else {
-                                            console.log("The withdraw transaction was sent to BitCoin cash node and transaction id: " + data4+ " was save to bch_withdraw_log DB!");
+                                            return callback(null,data4);
                                         }
                                     });
                                 }
-
                             }.bind({withdrawLog: data3}));
                         }
                     });
@@ -276,4 +271,5 @@ module.exports = {
     withdrawBCH:withdrawBCH,
     BCHRPCCLIENT:BCHRPCCLIENT,
     updateUnspentTx:updateUnspentTx,
-    updateSubmittedWithdrawTxs:updateSubmittedWithdrawTxs}
+    updateSubmittedWithdrawTxs:updateSubmittedWithdrawTxs,
+    withdrawBCH:withdrawBCH}

@@ -1,0 +1,83 @@
+<!-- views/profile.ejs -->
+<!doctype html>
+<html>
+
+<head>
+	<title>Coins and Cryptocurrency Exchange</title>
+	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
+	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css">
+	<style>
+		body 		{ padding-top:80px; word-wrap:break-word; }
+	</style>
+</head>
+<body>
+<div class="container">
+
+	<div class="page-header text-center">
+		<h1><span class="fa fa-anchor"></span> Deposit Coin</h1>
+		<a href="/logout" class="btn btn-default btn-sm">Logout</a>
+		<a href="/profile" class="btn btn-default btn-sm">Profile</a>
+
+	</div>
+
+	<div class="row">
+		<!--<div class="page-header text-center">-->
+			<!---->
+		<!--</div>-->
+		<!-- LOCAL INFORMATION -->
+		<div class="col-sm-6">
+			<div class="well">
+				<h3><span class="fa fa-user"></span> Ethereum</h3>
+
+					<p>
+						<strong>username</strong>: <%= user.username %><br>
+						<strong>coin amount</strong>: <%= user.coin %><br>
+                        <!--<strong>imageURL</strong>: <%= imgUrlEth %><br>-->
+						<strong>address</strong>:<br>
+						<canvas id="ETHQRCODE"></canvas><br>
+						<!--<div id="urld" style="display:none"><%= imgUrlEth %></div><br>-->
+				</p>
+			</div>
+		</div>
+		<div class="col-sm-6">
+			<div class="well">
+				<h3><span class="fa fa-user"></span> Bitcoin Cash</h3>
+
+				<p>
+					<strong>username</strong>: <%= user.username %><br>
+					<strong>coin amount</strong>: <%= user.coin %><br>
+					<!--<strong>imageURL</strong>: <%= imgUrlBCH %><br>-->
+					<strong>address</strong>:<br>
+					<canvas id="BCHQRCODE"></canvas><br>
+					<!--<div id="urld" style="display:none"><%= imgUrlBCH %></div><br>-->
+				</p>
+			</div>
+		</div>
+	</div>
+
+
+
+    <script>
+		var myCanvasEth = document.getElementById('ETHQRCODE');
+		var ctxEth = myCanvasEth.getContext('2d');
+		var imgEth = new Image;
+		imgEth.onload = function(){
+			ctxEth.drawImage(imgEth,0,0); // Or at whatever offset you like
+		};
+		imgEth.src = "<%= imgUrlEth %>";
+
+        var myCanvasBch = document.getElementById('BCHQRCODE');
+        var ctxBch = myCanvasBch.getContext('2d');
+        var imgBch = new Image;
+        imgBch.onload = function(){
+            ctxBch.drawImage(imgBch,0,0); // Or at whatever offset you like
+        };
+        imgBch.src = "<%= imgUrlEth %>";
+
+
+    </script>
+</div>
+
+</body>
+
+</html>

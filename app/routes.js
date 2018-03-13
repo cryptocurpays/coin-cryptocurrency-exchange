@@ -78,89 +78,60 @@ module.exports = function(app, passport) {
 	});
 
 
-    app.get('/qrtest', function(req, res) {
-        // render the page and pass in any flash data if it exists
-        res.render('qrtest.html');
-    });
-
 	//Leo 绘制eth转账二维码界面
-	app.get('/ethdeposit', function(req, res) {
+	app.get('/deposit', function(req, res) {
 		// render the page and pass in any flash data if it exist
-		var QRCode = require('qrcode')
-		var MYSQL = require('mysql');
-		var DBCONFIG = require('./../config/database');
-		// System variables
-		var connection = MYSQL.createConnection(DBCONFIG.connection);
-
-		connection.query("SELECT * FROM "+DBCONFIG.database+ ".users Where username = '"+req.user.username+"'", function(err, rows){
-			if (err){
-				console.log(err);
-				return done(false);
-			}
-			if (rows.length==0){
-				console.log("This address belongs to nobody!");
-				return done(false);
-			}
-			//console.log(rows);
-
-
-			QRCode.toDataURL(rows[0].eth_address, function (err, url) {
-				console.log('Image URL is '+url);
-				res.render('ethdeposit.ejs', { user: req.user, imgUrl: url});
-			})
-			//return done(true, rows);
-		});
-
-
-
+		var QRCode = require('qrcode');
+		const DBService =require('./../service/db_service');
+		DBService.getUserByUsername(req.user.username,function (err, rows) {
+            if (err){
+                console.log(err);
+                //	return done(false);
+            }
+            if (rows.length==0){
+                console.log("Cannot find this user name in DB!");
+                //	return done(false);
+            }
+            QRCode.toDataURL(rows[0].eth_address, function (err, url) {
+            	let eth_url = url;
+            	QRCode.toDataURL(this.row.bch_address,function (err1,url1) {
+					let bch_url = url1;
+                    this.res.render('deposit.ejs', { user: this.req.user, imgUrlEth: eth_url,imgUrlBCH:bch_url});
+                }.bind({row: rows[0],res:res,req:req}))
+            }.bind({row: rows[0],res:res,req:req}))
+        });
 	});
 
 	//Leo  eth转出接口
-	app.post('/ethdeout',function(req, res){
-		console.log(req.body);
-
-		var QRCode = require('qrcode');
-		var MYSQL = require('mysql');
-		var DBCONFIG = require('./../config/database');
-		var ethConfig = require('./../config/ethereum');
-		// System variables
-		var connection = MYSQL.createConnection(DBCONFIG.connection);
-		var Eth = require('./../app/eth_transactions');
-
-		connection.query("SELECT * FROM "+DBCONFIG.database+ ".users Where username = '"+req.user.username+"'", function(err, rows){
-			if (err){
-				console.log(err);
-				return done(false);
-			}
-			if (rows.length==0){
-				console.log("This address belongs to nobody!");
-				return done(false);
-			}
-			//console.log(rows);
-
-			if(rows[0].coin < req.body.amount){
-				//res.render('profile.ejs', {
-				//	user : req.user, // get the user out of session and pass to template
-				//	out : false
-				//});
-			}
-			console.log("amount="+req.body.amount);
-			Eth.withdrawEth(req.user,req.body.address,req.body.amount)
-
-			QRCode.toDataURL(rows[0].eth_address, function (err, url) {
-				console.log('Image URL is '+url);
-				res.render('ethdeposit.ejs', { user: req.user, imgUrl: url});
-			})
-
-
-
-		});
-
-
-
+	app.post('/ethwithdraw',function(req, res){
+		let Eth = require('./eth_transactions');
+        Eth.withdrawEth(req.user,req.body.ethAddress,req.body.ethAmount,function (err,data) {
+			if(err) console.log(err);
+			else{
+                res.render('withdraw.ejs', { user: req.user,msg: "Coin was withdrawn into Ethereum. The transaction ID is "+data});
+            }
+        });
 
 	});
+    app.post('/bchwithdraw',function(req, res){
+    	console.log(req.user);
+        let Bch = require('./bch_transactions');
+        Bch.withdrawBCH(req.user.username,req.body.bchAddress,req.body.bchAmount,function (err,data) {
+            if(err) console.log(err);
+            else{
+                res.render('withdraw.ejs', { user: req.user,msg: "Coin was withdrawn into Bitcoin Cash. The transaction ID is "+data});
+            }
+        });
+
+    });
+    app.get('/withdraw',function(req, res){
+        console.log(req.body);
+        res.render('withdraw.ejs', { user: req.user, msg: "Withdraw Coin to Eth or Bch"});
+    });
 };
+
+
+
 
 // route middleware to make sure
 function isLoggedIn(req, res, next) {
