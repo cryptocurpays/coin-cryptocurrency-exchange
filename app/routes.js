@@ -108,7 +108,7 @@ module.exports = function(app, passport) {
         Eth.withdrawEth(req.user,req.body.ethAddress,req.body.ethAmount,function (err,data) {
 			if(err) console.log(err);
 			else{
-                res.render('withdraw.ejs', { user: req.user,msg: "Coin was withdrawn into Ethereum. The transaction ID is "+data});
+                res.render('withdraw.ejs', { user: req.user,msg: "Coin was withdrawn as Ethereum. The transaction ID is "+data});
             }
         });
 
@@ -119,7 +119,7 @@ module.exports = function(app, passport) {
         Bch.withdrawBCH(req.user.username,req.body.bchAddress,req.body.bchAmount,function (err,data) {
             if(err) console.log(err);
             else{
-                res.render('withdraw.ejs', { user: req.user,msg: "Coin was withdrawn into Bitcoin Cash. The transaction ID is "+data});
+                res.render('withdraw.ejs', { user: req.user,msg: "Coin was withdrawn as Bitcoin Cash. The transaction ID is "+data});
             }
         });
 
