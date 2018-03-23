@@ -17,11 +17,7 @@
 		<a href="/logout" class="btn btn-default btn-sm">Logout</a>
 	</div>
 
-
-
 	<div class="row">
-
-		<!-- LOCAL INFORMATION -->
 		<div class="col-sm-6">
 			<div class="well">
 				<h3><span class="fa fa-user"></span> Local</h3>
@@ -29,14 +25,12 @@
 					<p>
 						<strong>id</strong>: <%= user.id %><br>
 						<strong>username</strong>: <%= user.username %><br>
-						<strong>coin</strong>: <%= user.coin %>
+						<strong>coin</strong>: <%= user.coin %><br>
+						<strong>eth_value (GWei)</strong>: <%= user.eth_value %><br>
+						<strong>bch_value       </strong>: <%= user.bch_value %>
 					</p>
 
 			</div>
-			<!--<div class="page-header text-center">-->
-				<!--<h3>Deposit Coins</h3>-->
-				<!--<a href="/ethdeposit" class="btn btn-default btn-sm">Ethereum</a>-->
-			<!--</div>-->
 
 		</div>
 

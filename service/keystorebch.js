@@ -137,5 +137,4 @@ module.exports ={
     withdrawSource:withdrawSource,
     hdPrivateKey:hdPrivateKey,
     setWithdrawSource:setWithdrawSource,
-    withdrawSource:withdrawSource
 }

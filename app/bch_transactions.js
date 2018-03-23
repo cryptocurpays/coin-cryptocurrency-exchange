@@ -1,6 +1,5 @@
 //Import modules
 const MYSQL = require('mysql');
-const DBCONFIG = require('./../config/database');
 const BCC = require("./../service/bitcoincashrpc");
 const BCHCONFIG = require('./../config/bchconfig');
 const BCHADDR = require('bchaddrjs');
@@ -9,8 +8,7 @@ const BCHkeyStore = require('./../service/keystorebch');
 
 
 // System variables
-const connection = MYSQL.createConnection(DBCONFIG.connection);
-const BCHRPCCLIENT = new BCC(BCHCONFIG.host, BCHCONFIG.username, BCHCONFIG.password, BCHCONFIG.port, 3000);//Bitcoin Cash RPC Connection
+const BCHRPCCLIENT = new BCC(BCHCONFIG.host, BCHCONFIG.username, BCHCONFIG.password, BCHCONFIG.port, 30000);//Bitcoin Cash RPC Connection
 
 //All the unspent transactions that belong to the withdraw source account.
 var unspentTxs =[];
@@ -21,25 +19,13 @@ const withdrawLogStatus ={
     MINED: 4
 };
 
-function findRecipientAddresses(done) {
-    connection.query("SELECT bch_address, username FROM "+DBCONFIG.database+ ".users", function(err, rows){
-        if (err){
-            return done(err);
-        }
-        if (rows.length===0){
-            return done("New transactions weren't found!");
-        }
-        return done(null, rows);
-    });
-}
-
-async function addRecipientAddresses(addressArray) {
+function addRecipientAddresses(addressArray,callback) {
     const bitcorecash = require('bitcoincashjs');
     const BASE58CHECK = bitcorecash.encoding.Base58Check;
-
+    let count =0;
     for(let i=0;i<addressArray.length;i++){
+        if (addressArray[i].bch_address===null) continue;
         let addressBase58Check;
-
         if(BCHCONFIG.network===bitcorecash.Networks.testnet) {
             console.log(addressArray[i].bch_address);
             console.log("6f" + addressArray[i].bch_address.slice(2));
@@ -48,75 +34,86 @@ async function addRecipientAddresses(addressArray) {
         else if(BCHCONFIG.network===bitcorecash.Networks.livenet){
             addressBase58Check = BASE58CHECK.encode(new Buffer("00"+addressArray[i].bch_address.slice(2),'hex'));
         }
-        await BCHRPCCLIENT.importaddress(addressBase58Check.toString(),addressArray[i].username,false);
+        var p = Promise.resolve(BCHRPCCLIENT.importaddress(addressBase58Check.toString(),addressArray[i].username,false));
+        p.then(function () {
+            count++;
+        });
     }
+    if(count===0)
+        return callback('No BCH Address has been added to the node to watch.');
+    return callback(null, count);
 };
 
-
 function initRecipientAddresses() {
-    findRecipientAddresses(function (err, addressArray) {
+    DBSERVICE.getAllUsers(function (err, addressArray) {
         if(!err){
-            addRecipientAddresses(addressArray);
-
+            addRecipientAddresses(addressArray,function (err, data) {
+                if(err) console.log(err)
+                else console.log(data+" BCH addresses has been added to the Bitcoin Cash Node to watch for the deposit transactions!");
+            });
         }else{
             console.log(err);
         }
-    })
+    });
 };
-async function checkBlockChainForDepositTx() {
 
+function checkBlockChainForDepositTx() {
     if((typeof  BCHRPCCLIENT!='undefined')){
-        findRecipientAddresses(async function (err,data) {
+        DBSERVICE.getAllUsers( function (err,data) {
             if(err){
                 console.log(err);
             }else{
                 for(var i =0;i <data.length; i++){
                     var username =data[i].username;
-                    var transactions = await BCHRPCCLIENT.listTransactions(username,20,0,true);
-                    for(var j=0;j<transactions.length;j++){
-                        DBSERVICE.getBCHDepositTransactionByTxId(transactions[j].txid,function (err1, rows) {
-                            if(err1)
-                            {
-                                console.log(err1);
-                            }
-                            else if(rows.length==0){
-                                if((this.transaction.confirmations>=BCHCONFIG.minConfirmation)|| (this.transaction.category =='receive'))
+                    var p = Promise.resolve(BCHRPCCLIENT.listTransactions(username,20,0,true));
+                    p.then(function (transactions) {
+                        for(var j=0;j<transactions.length;j++){
+                            DBSERVICE.getBCHDepositTransactionByTxId(transactions[j].txid,function (err1, rows) {
+                                if(err1)
                                 {
-                                    DBSERVICE.getUserByUsername(username,function (err2,data) {
-                                        if(err2)
-                                            console.log(err2);
-                                        else{
-                                            var coinsDeposit = this.transaction.amount*BCHCONFIG.coinsPerBCH;
-                                            var coinBalanceNew = data[0].coin + coinsDeposit;
-                                            var userid = data[0].id;
-                                            DBSERVICE.updateCoinByUsername(coinBalanceNew,username,function (err3, rows) {
-                                                if(err3)
-                                                    console.log(err3);
-                                                else{
-                                                    DBSERVICE.addBCHDepositTransaction(this.transaction.txid,this.transaction.
-                                                        address,userid,this.transaction.amount,0,
-                                                        function (err4, rows) {
-                                                            if(err4)
-                                                                console.log(err4);
-                                                            else{
-                                                                console.log("Found a new BCH deposit transaction and updated all the records accordingly!");
-                                                                console.log("Txid is "+this.transaction.txid);
-                                                            }
-                                                    }.bind({transaction: this.transaction}));
-
-                                                }
-                                            }.bind({transaction: this.transaction}));
-                                        }
-                                    }.bind({transaction: this.transaction}));
+                                    console.log(err1);
                                 }
-                            }
-                            else
-                                console.log("The transaction "+this.transaction.txid+" has already been handled by the system.");
-                        }.bind({transaction: transactions[j]}));
-                    }
+                                else if(rows.length==0){
+                                    if((this.transaction.confirmations>=BCHCONFIG.minConfirmation)&& (this.transaction.category ==='receive'))
+                                    {
+                                        DBSERVICE.getUserByUsername(username,function (err2,data) {
+                                            if(err2)
+                                                console.log(err2);
+                                            else{
+                                                var coinsDeposit = this.transaction.amount*BCHCONFIG.coinsPerBCH;
+                                                var coinBalanceNew = data[0].coin + coinsDeposit;
+                                                var userid = data[0].id;
+                                                console.log('coinBalanceNew is'+coinBalanceNew);
+                                                console.log('username is'+username);
+
+                                                DBSERVICE.updateCoinByUsername(coinBalanceNew,username,function (err3, rows) {
+                                                    if(err3)
+                                                        console.log(err3);
+                                                    else{
+                                                        DBSERVICE.addBCHDepositTransaction(this.transaction.txid,this.transaction.
+                                                                address,userid,this.transaction.amount,0,
+                                                            function (err4, rows) {
+                                                                if(err4)
+                                                                    console.log(err4);
+                                                                else{
+                                                                    console.log("Found a new BCH deposit transaction and updated all the records accordingly!");
+                                                                    console.log("Txid is "+this.transaction.txid);
+                                                                }
+                                                            }.bind({transaction: this.transaction}));
+
+                                                    }
+                                                }.bind({transaction: this.transaction}));
+                                            }
+                                        }.bind({transaction: this.transaction}));
+                                    }
+                                }
+                                else
+                                    console.log("The transaction "+this.transaction.txid+" has already been handled by the system.");
+                            }.bind({transaction: transactions[j]}));
+                        }
+                    });
                 }
             }
-
         });
     }
 };
@@ -172,7 +169,7 @@ function withdrawBCH(username, toAddress, coinAmount,callback) {
         }
     });
 }
-async function sendTxToNode(withdrawLog, done) {
+function sendTxToNode(withdrawLog, done) {
         var bch = require('bitcoincashjs');
         var bchkey = require('./../service/keystorebch');
         updateUnspentTx();
@@ -182,13 +179,16 @@ async function sendTxToNode(withdrawLog, done) {
         if(withdrawUTXO.err){
             return done(withdrawUTXO.err);
         }else{
-            //The current API only accept the legacy address format, not cash format. We have to convert the address format before we spend these UTXOs.
+            //The current rpc interface only accepts legacy address format, not Bitcoin cash format. We have to convert the address format before we spend these UTXOs.
+            //bchaddrjs does not accept bchreg prefix, convert bchreg into regtest if it is necessary.
             for(var i=0; i<withdrawUTXO.UTXOs.length; i++){
+     //           withdrawUTXO.UTXOs[i].address.replace('bchreg','regtest');
                 withdrawUTXO.UTXOs[i].address = BCHADDR.toLegacyAddress(withdrawUTXO.UTXOs[i].address);
             }
 
             var transaction = new bch.Transaction();
             transaction.from(withdrawUTXO.UTXOs);
+            console.log('The input address is '+withdrawUTXO.UTXOs[0].address);
             transaction.to(withdrawLog.to_address, bch_value_satoshi);
             transaction.change(bchkey.withdrawSource[0].address);
             transaction.sign(BCHkeyStore.withdrawSource[0].derivedPrivateKey.privateKey);
@@ -217,7 +217,6 @@ function updateUnspentTx(){
 
 };
 
-
 function chooseUnspentTxForWithdraw(withdrawAmount) {
     var withdrawFrom = [];
     for(var i=0; i<unspentTxs.length; i++){
@@ -237,7 +236,6 @@ function chooseUnspentTxForWithdraw(withdrawAmount) {
     }
     return ({err:"The account balance is insufficient."});
 };
-
 
 function updateSubmittedWithdrawTxs() {
 
@@ -264,12 +262,35 @@ function updateSubmittedWithdrawTxs() {
     });
 }
 
+function getBCHBalanceByUserId(userId,done) {
+    DBSERVICE.getBCHDepositeTxsByUserId(userId,function (err,data) {
+        if(err)
+        {
+            return done(err);
+        }
+        let totalWithdraw =0;
+        for(let i=0;i<data.length;i++){
+            totalWithdraw+=data[0].value;
+        }
+        DBSERVICE.getBCHWithdrawTxsByUserId(userId,function (err,data) {
+            if(err){
+                return done(err);
+            }
+            for(let j=0;j<data.length;j++){
+                totalWithdraw-=data[0].bch_value;
+            }
+            return done(null,totalWithdraw);
+        }.bind({totalWithdraw:totalWithdraw}))
+    })
+}
+
 module.exports = {
     addRecipientAddresses:addRecipientAddresses,
     initRecipientAddresses:initRecipientAddresses,
     checkBlockChainForDepositTx:checkBlockChainForDepositTx,
     withdrawBCH:withdrawBCH,
-    BCHRPCCLIENT:BCHRPCCLIENT,
     updateUnspentTx:updateUnspentTx,
     updateSubmittedWithdrawTxs:updateSubmittedWithdrawTxs,
-    withdrawBCH:withdrawBCH}
+    withdrawBCH:withdrawBCH,
+    getBCHBalanceByUserId:getBCHBalanceByUserId
+}

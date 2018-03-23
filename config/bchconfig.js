@@ -11,7 +11,7 @@ module.exports = {
     'port': 8332,
     'minStartBlock': 0, // When scan the block, the starting point
     'minConfirmation':1,
-    "coinsPerBCH":1000000,
+    "coinsPerBCH":1000,
     'withdrawSourceHDPath': ['m/0\'/1\'/0\''],
-    'minTxFee':1
+    'minTxFee':0.001
 };

@@ -62,11 +62,33 @@ module.exports = function(app, passport) {
 	// we will use route middleware to verify this (the isLoggedIn function)
 	app.get('/profile', isLoggedIn, function(req, res) {
 		console.log(req.session.id)
+        let user = req.user;
+        let DBService = require('./../service/db_service');
+		let ETHTransaction = require('./eth_transactions');
+        let BCHTransaction = require('./bch_transactions');
 
-
-		res.render('profile.ejs', {
-			user : req.user // get the user out of session and pass to template
-		});
+        DBService.getUserByUsername(user.username,function (err,data) {
+            if(err) {
+                console.log(err);
+                user.eth_value = -1;
+            }
+            else
+                ETHTransaction.getETHBalanceByUserId(data[0].id,function (err,ethData) {
+                    if(!err){
+                        user.eth_value = ethData;
+                        BCHTransaction.getBCHBalanceByUserId(this.userId,function (err,bchData) {
+                            if(!err){
+                                user.bch_value = bchData;
+                            }
+                            res.render('profile.ejs', {user : user});
+                        })
+                    }
+                    else
+                    res.render('profile.ejs', {
+                        user : user // get the user out of session and pass to template
+                    });
+                }.bind({userId:data[0].id}))
+        })
 	});
 
 	// =====================================
@@ -105,7 +127,7 @@ module.exports = function(app, passport) {
 	//Leo  eth转出接口
 	app.post('/ethwithdraw',function(req, res){
 		let Eth = require('./eth_transactions');
-        Eth.withdrawEth(req.user,req.body.ethAddress,req.body.ethAmount,function (err,data) {
+        Eth.withdrawETH(req.user.username,req.body.ethAddress,req.body.ethAmount,function (err,data) {
 			if(err) console.log(err);
 			else{
                 res.render('withdraw.ejs', { user: req.user,msg: "Coin was withdrawn as Ethereum. The transaction ID is "+data});

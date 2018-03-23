@@ -1,7 +1,6 @@
-var mysql = require('mysql');
 var dbconfig = require('./../config/database');
 var ethconfig = require('./../config/ethereum');
-var connection = mysql.createConnection(dbconfig.connection);
+const DBSERVICE = require('./../service/db_service');
 const fs = require('fs');
 
 var ks ;
@@ -15,7 +14,7 @@ function getKeyStore() {
     return ks;
 };
 
-function initkeystore(callback) {
+function initKeystore(callback) {
         const fs = require('fs');
         ks = fs.readFile('keystore.txt', 'utf8', function(err, data) {
                 if (err) {
@@ -96,57 +95,49 @@ function updateUserToAddress(username) {
     ks.keyFromPassword(ethconfig.keyStorePassword, function (err, pwDerivedKey) {
         if(err)
         {
-            console.log(err);
+            return console(err);
         }
         else
         {
-            ks.generateNewAddress(pwDerivedKey, 10);
-            var addresses = ks.getAddresses();
-            updateUserToAddressWithArray(username,addresses);
-        }
-    });
-};
-
-
-function updateUserToAddressWithArray(username, addressArray){
-    var ethtransaction = require('./../app/eth_transactions');
-
-    if(addressArray.length==0)
-        console.log("UpdateUserToAddress failed. No more addresses in Address Array.");
-    else{
-        var newAddress = addressArray[0];
-        ethtransaction.findUserByToAddresses(newAddress,function (ifSucceed, u) {
-            if(!ifSucceed){
-                var updateQuery = "UPDATE "+dbconfig.database+".users SET eth_address = '"+ newAddress+ "' where username = '" + username+"'";
-                connection.query(updateQuery,function(err, rows) {
+            DBSERVICE.getUserByUsername(username,function (err,data) {
+                if(err) {
+                    console.log(err);
+                    return;
+                }
+                if(ks.getAddresses().length <data[0].id)
+                {
+                    ks.generateNewAddress(pwDerivedKey,data[0].id-ks.getAddresses().length)
+                }
+                let address = ks.getAddresses()[data[0].id-1];
+                let updateList ={eth_address:address};
+                DBSERVICE.updateUsersByUsername(username,updateList,function (err,data) {
                     if(err){
                         console.log(err);
-                    }else
-                        console.log("The new username "+ username+", address is "+ newAddress);
-                    ethtransaction.addRecipientAddresses([newAddress]);
-                    var serialized = ks.serialize();
-                    fs.writeFile('keystore.txt', serialized, function(err){
-                        if (err) throw err;
-                        // success case, the file was saved
-                        console.log('Keystore new key saved to file!');
-                    });
-                });
-            }else{
-                addressArray.shift();
-                updateUserToAddressWithArray(username,addressArray);
-            }
-        });
-    }
-};
+                        return;
+                    }
+                    else{
+                        console.log("The new username "+ username+", ETH address is "+ address);
+                        const ETH_TX = require('./../app/eth_transactions');
+                        ETH_TX.addRecipientAddresses(address);
+                        var serialized = ks.serialize();
+                        fs.writeFile('keystore.txt', serialized, function(err){
+                            if (err) throw err;
+                            // success case, the file was saved
+                            console.log('Keystore new key saved to file!');
+                        });
+                    }
+                })
 
+            });
+        }
+    });
+
+};
 
 module.exports ={
     getKeyStore: getKeyStore,
-    getks: function () {
-        return ks;
-    },
    init: function (callback) {
-       initkeystore(function (isSucceed, ksi) {
+       initKeystore(function (isSucceed, ksi) {
            if(isSucceed){
                setksintance(ksi);
                return callback(true,ksi);
