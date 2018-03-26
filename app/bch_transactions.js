@@ -65,56 +65,53 @@ function checkBlockChainForDepositTx() {
                 if(err){
                     console.log(err);
                 }else{
-                    for(var i =0;i <data.length; i++){
-                        var username =data[i].username;
-                        var p = Promise.resolve(BCHRPCCLIENT.listTransactions(username,20,0,true));
+                    for(let i =0;i <data.length; i++){
+                      //  var username =data[i].username;
+                       // var userId = data[i].id;
+                       // var coinBalance = data[i].coin;
+                        var p = Promise.resolve(BCHRPCCLIENT.listTransactions(data[i].username,50,0,true));
                         p.then(function (transactions) {
-                            for(var j=0;j<transactions.length;j++){
-                                DBSERVICE.getBCHDepositTransactionByTxId(transactions[j].txid,function (err1, rows) {
+                            for(let j=0;j<transactions.length;j++){
+                                DBSERVICE.getBCHDepositTransactionByTxId(transactions[j].txid,function (err1, rows1) {
                                     if(err1)
                                     {
                                         console.log(err1);
                                     }
-                                    else if(rows.length==0){
-                                        if((this.transaction.confirmations>=BCHCONFIG.minConfirmation)&& (this.transaction.category ==='receive'))
+                                    else if(rows1.length==0){
+                                        if((this.transaction.confirmations>=BCHCONFIG.minConfirmation)&& (this.transaction.category ==='receive')&&this.transaction.account===this.user.username)
                                         {
-                                            DBSERVICE.getUserByUsername(username,function (err2,data) {
-                                                if(err2)
-                                                    console.log(err2);
+                                            let coinsDeposit = this.transaction.amount*BCHCONFIG.coinsPerBCH;
+                                            let coinBalance = this.user.coin;
+                                            var coinBalanceNew = coinBalance + coinsDeposit;
+                                            console.log('coinBalanceNew is'+coinBalanceNew);
+                                            console.log('username is'+this.user.username);
+
+                                            DBSERVICE.updateCoinByUsername(coinBalanceNew,this.user.username,function (err3, rows3) {
+                                                if(err3)
+                                                    console.log(err3);
                                                 else{
-                                                    var coinsDeposit = this.transaction.amount*BCHCONFIG.coinsPerBCH;
-                                                    var coinBalanceNew = data[0].coin + coinsDeposit;
-                                                    var userid = data[0].id;
-                                                    console.log('coinBalanceNew is'+coinBalanceNew);
-                                                    console.log('username is'+username);
+                                                    let bch_value_satoshi =this.transaction.amount*100000000;
 
-                                                    DBSERVICE.updateCoinByUsername(coinBalanceNew,username,function (err3, rows) {
-                                                        if(err3)
-                                                            console.log(err3);
-                                                        else{
-                                                            let bch_value_satoshi =this.transaction.amount*100000000;
-                                                            DBSERVICE.addBCHDepositTransaction(this.transaction.txid,this.transaction.
-                                                                    address,userid,bch_value_satoshi,blockAcount-this.transaction.confirmations,
-                                                                function (err4, rows) {
-                                                                    if(err4)
-                                                                        console.log(err4);
-                                                                    else{
-                                                                        console.log("Found a new BCH deposit transaction and updated all the records accordingly!");
-                                                                        console.log("Txid is "+this.transaction.txid);
-                                                                    }
-                                                                }.bind({transaction: this.transaction}));
+                                                    DBSERVICE.addBCHDepositTransaction(this.transaction.txid,this.transaction.
+                                                            address,this.user.id,bch_value_satoshi,blockAcount-this.transaction.confirmations,
+                                                        function (err4, rows4) {
+                                                            if(err4)
+                                                                console.log(err4);
+                                                            else{
+                                                                console.log("Found a new BCH deposit transaction and updated all the records accordingly!");
+                                                                console.log("Txid is "+this.transaction.txid);
+                                                            }
+                                                        }.bind({transaction: this.transaction,user:this.user}));
 
-                                                        }
-                                                    }.bind({transaction: this.transaction}));
                                                 }
-                                            }.bind({transaction: this.transaction}));
+                                            }.bind({transaction: this.transaction,user:this.user}));
                                         }
                                     }
                                     else
                                         console.log("The transaction "+this.transaction.txid+" has already been handled by the system.");
-                                }.bind({transaction: transactions[j]}));
+                                }.bind({transaction: transactions[j],user:this.user}));
                             }
-                        });
+                        }.bind({user:data[i]}));
                     }
                 }
             });
