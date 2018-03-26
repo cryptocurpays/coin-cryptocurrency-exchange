@@ -6,16 +6,20 @@
 	<title>Coins and Cryptocurrency Exchange</title>
 	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
 	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css">
+	<script src='/assets/js/jquery-3.3.1.js'></script>
 	<style>
 		body 		{ padding-top:80px; word-wrap:break-word; }
 	</style>
 </head>
-<body>
+<body class="text-center">
 <div class="container">
 
 	<div class="page-header text-center">
-		<h1><span class="fa fa-anchor"></span> Deposit Coin</h1>
-		<a href="/logout" class="btn btn-default btn-sm">Logout</a>
+		<h1><span class="fa fa-bitcoin"></span> Deposit Coin</h1>
+        <h4 class='text-left'><strong>User Name:</strong><%= user.username %></h4>
+        <h4 class='text-left'><strong>Coin Amount:</strong><text id="coinBalance"><%= user.coin %></text> </h4>
+
+        <a href="/logout" class="btn btn-default btn-sm">Logout</a>
 		<a href="/profile" class="btn btn-default btn-sm">Profile</a>
 
 	</div>
@@ -27,37 +31,36 @@
 		<!-- LOCAL INFORMATION -->
 		<div class="col-sm-6">
 			<div class="well">
-				<h3><span class="fa fa-user"></span> Ethereum</h3>
-
-					<p>
-						<strong>username</strong>: <%= user.username %><br>
-						<strong>coin amount</strong>: <%= user.coin %><br>
+				<h5><span class="fa fa-btc"></span> Ethereum</h5>
+                <p class="text-left"><strong>Address: </strong><%= user.eth_address %></p>
+                <p class="text-left"><strong>Balance (GWeis): </strong><text id="ethBalance"><%= user.eth_amount %></text></p>
+                <p>
                         <!--<strong>imageURL</strong>: <%= imgUrlEth %><br>-->
-						<strong>address</strong>:<br>
 						<canvas id="ETHQRCODE"></canvas><br>
 						<!--<div id="urld" style="display:none"><%= imgUrlEth %></div><br>-->
 				</p>
+                    <button id ="getButton" onclick="getEthPending()" class="btn btn-lg btn-primary btn-block">Check Deposits</button><br>
 			</div>
-		</div>
+            <text class="text-left" id="getResponse"></text>
+        </div>
 		<div class="col-sm-6">
 			<div class="well">
-				<h3><span class="fa fa-user"></span> Bitcoin Cash</h3>
-
+				<h5 ><span class="fa fa-btc"></span> Bitcoin Cash</h5>
+                <p class="text-left"><strong>Address: </strong><%= user.bch_address %></p>
+                <p class="text-left"><strong>Balance (Satoshi): </strong><text id="bchBalance"><%= user.bch_amount %></text></p>
 				<p>
-					<strong>username</strong>: <%= user.username %><br>
-					<strong>coin amount</strong>: <%= user.coin %><br>
 					<!--<strong>imageURL</strong>: <%= imgUrlBCH %><br>-->
-					<strong>address</strong>:<br>
 					<canvas id="BCHQRCODE"></canvas><br>
 					<!--<div id="urld" style="display:none"><%= imgUrlBCH %></div><br>-->
 				</p>
-			</div>
-		</div>
+                <button id ="getBCHButton" onclick="getBCHPending()" class="btn btn-lg btn-primary btn-block">Check Deposits</button><br>
+            </div>
+            <text class="text-left" id="getBCHResponse"></text>
+        </div>
 	</div>
 
 
-
-    <script>
+	<script>
 		var myCanvasEth = document.getElementById('ETHQRCODE');
 		var ctxEth = myCanvasEth.getContext('2d');
 		var imgEth = new Image;
@@ -74,8 +77,118 @@
         };
         imgBch.src = "<%= imgUrlEth %>";
 
+/*
+        $("#getButton").on("click",function () {
+            $.ajax({
+                type: 'GET',
+                url:'/ajaxdeposit',
+                dataType:'json'
+            })
+                .done(function (data) {
+                    console.log('GET response:',JSON.stringify(data));
+                    if(data.length>0) $('#getResponse').html(JSON.stringify(data));
 
-    </script>
+                })
+                .fail(function (jqXHR,testStatus,err) {
+                    console.log('AJAX error response:',testStatus)
+                });
+        });*/
+
+        var pendingAmount=0;
+        var pendingBCHAmount=0;
+        function getEthBalance() {
+            $.ajax({
+                type: 'GET',
+                url:'/ajaxethbalance',
+                dataType:'json'
+            })
+                .done(function (data) {
+                        $('#ethBalance').html(data.ethBalance);
+                    })
+                .fail(function (jqXHR,testStatus,err) {
+                    console.log('AJAX error response:',testStatus)
+                });
+        }
+
+        function getBCHBalance() {
+            $.ajax({
+                type: 'GET',
+                url:'/ajaxbchbalance',
+                dataType:'json'
+            })
+                .done(function (data) {
+                    console.log('The BCH Balance is '+data.bchBalance);
+                    $('#bchBalance').html(data.bchBalance);
+                })
+                .fail(function (jqXHR,testStatus,err) {
+                    console.log('AJAX error response:',testStatus)
+                });
+        }
+
+        function getCoinBalance() {
+            $.ajax({
+                type: 'GET',
+                url:'/ajaxcoinbalance',
+                dataType:'json'
+            })
+                .done(function (data) {
+                    console.log('Coin balance is '+data.coinBalance);
+                    $('#coinBalance').html(data.coinBalance);
+                })
+                .fail(function (jqXHR,testStatus,err) {
+                    console.log('AJAX error response:',testStatus)
+                });
+        }
+        function getEthPending () {
+            $.ajax({
+                type: 'GET',
+                url:'/ajaxdeposit',
+                dataType:'json'
+            })
+                .done(function (data) {
+                    if(data.length<pendingAmount){
+                        getEthBalance();
+                        getCoinBalance()
+                    }
+                    pendingAmount=data.length;
+                    if(data.length>0)
+                        $('#getResponse').html(JSON.stringify(data));
+                    else
+                        $('#getResponse').html('');
+
+                    setTimeout(getEthPending,10000);
+
+                })
+                .fail(function (jqXHR,testStatus,err) {
+                    console.log('AJAX error response:',testStatus)
+                });
+        };
+        function getBCHPending () {
+            $.ajax({
+                type: 'GET',
+                url:'/ajaxbchdeposit',
+                dataType:'json'
+            })
+                .done(function (data) {
+                    console.log(data);
+                    if(data.length<pendingBCHAmount){
+                        getBCHBalance();
+                        getCoinBalance()
+                    }
+                    pendingBCHAmount=data.length;
+                    if(data.length>0)
+                        $('#getBCHResponse').html(JSON.stringify(data));
+                    else
+                        $('#getBCHResponse').html('');
+
+                    setTimeout(getBCHPending,10000);
+
+                })
+                .fail(function (jqXHR,testStatus,err) {
+                    console.log('AJAX error response:',testStatus)
+                });
+        };
+	</script>
 </div>
 
 </body>

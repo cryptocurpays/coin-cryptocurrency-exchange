@@ -6,6 +6,8 @@
 	<title>Coins and Cryptocurrency Exchange</title>
 	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
 	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css">
+	<script src='/assets/js/jquery-3.3.1.js'></script>
+
 	<style>
 		body 		{ padding-top:80px; word-wrap:break-word; }
 	</style>
@@ -14,7 +16,7 @@
 <div class="container">
 
 	<div class="page-header text-center">
-		<h1><span class="fa fa-anchor"></span> Withdraw Coin</h1>
+		<h1><span class="fa fa-bitcoin"></span> Withdraw Coin</h1>
 		<a href="/logout" class="btn btn-default btn-sm">Logout</a>
 		<a href="/profile" class="btn btn-default btn-sm">Profile</a>
 
@@ -24,36 +26,34 @@
 
 		<div class="col-sm-6">
 			<div class="well">
-				<h3><span class="fa fa-user"></span> Your current balance:</h3>
-
 				<p>
-					<strong>id</strong>: <%= user.id %><br>
-					<strong>username</strong>: <%= user.username %><br>
-					<strong>coin</strong>: <%= user.coin %><br>
-					<strong>Msg</strong>: <%= msg %>
+					<strong>ID</strong>: <%= user.id %><br>
+					<strong>Username</strong>: <%= user.username %><br>
+					<strong>Coin</strong>: <%= user.coin %><br>
+					<strong>Ethereum</strong>: <%= user.eth_amount %><br>
+					<strong>Bitcoin Cash</strong>: <%= user.bch_amount %><br>
 
 				</p>
 				<p>
 				<form action="/ethwithdraw" method="post">
 					To Ethereum Address:
-					<input type="text" name="ethAddress" value="">
-					<br>
+					<input type="text" class="form-control" name="ethAddress" value="">
 					Withdraw coin amount:
-					<input type="text" name="ethAmount" value="">
-					<br>
+					<input type="text" class="form-control" name="ethAmount" value="">
 					<input type="submit" value="Submit">
 				</form>
+				<text id='ethTransaction'></text>
+
 				</p>
 				<p>
 				<form action="/bchwithdraw" method="post">
 					To Bitcoin Cash Address:
-					<input type="text" name="bchAddress" value="">
-					<br>
+					<input type="text" class="form-control" name="bchAddress" value="">
 					Withdraw coin amount:
-					<input type="text" name="bchAmount" value="">
-					<br>
+					<input type="text" class="form-control" name="bchAmount" value="">
 					<input type="submit" value="Submit">
 				</form>
+				<text id='bchTransaction'></text>
 				</p>
 
 			</div>
@@ -62,7 +62,56 @@
 	</div>
 
 </div>
+<script>
+	let eth_tx = get('eth_tx');
+    let bch_tx = get('bch_tx');
 
+    if(eth_tx!==undefined){
+        getEthTx(eth_tx);
+	}
+
+    if(bch_tx!==undefined){
+        getBchTx(bch_tx);
+    }
+    function getBchTx(bch_tx) {
+        $.ajax({
+            type: 'GET',
+            url:'/ajaxbchtx?bch_tx='+bch_tx,
+            dataType:'json'
+        })
+            .done(function (data) {
+                if(data!==undefined)
+                    $('#bchTransaction').html(JSON.stringify(data));
+                else
+                    $('#bchTransaction').html('');
+                setTimeout(getBchTx,10000,bch_tx);
+            })
+            .fail(function (jqXHR,testStatus,err) {
+                console.log('AJAX error response:',testStatus)
+            });
+    }
+	function getEthTx(eth_tx) {
+        $.ajax({
+            type: 'GET',
+            url:'/ajaxethtx?eth_tx='+eth_tx,
+            dataType:'json'
+        })
+            .done(function (data) {
+                if(data!==undefined)
+                    $('#ethTransaction').html(JSON.stringify(data));
+                else
+                    $('#ethTransaction').html('');
+                setTimeout(getEthTx,10000,eth_tx);
+            })
+            .fail(function (jqXHR,testStatus,err) {
+                console.log('AJAX error response:',testStatus)
+            });
+    }
+    function get(name){
+        if(name=(new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
+            return decodeURIComponent(name[1]);
+    }
+</script>
 </body>
 
 </html>

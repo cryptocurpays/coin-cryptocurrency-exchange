@@ -101,10 +101,12 @@ module.exports = function(app, passport) {
 
 
 	//Leo 绘制eth转账二维码界面
-	app.get('/deposit', function(req, res) {
+	app.get('/deposit', isLoggedIn,function(req, res) {
 		// render the page and pass in any flash data if it exist
 		var QRCode = require('qrcode');
 		const DBService =require('./../service/db_service');
+        let ETHTransaction = require('./eth_transactions');
+        let BCHTransaction = require('./bch_transactions');
 		DBService.getUserByUsername(req.user.username,function (err, rows) {
             if (err){
                 console.log(err);
@@ -117,43 +119,115 @@ module.exports = function(app, passport) {
             QRCode.toDataURL(rows[0].eth_address, function (err, url) {
             	let eth_url = url;
             	QRCode.toDataURL(this.row.bch_address,function (err1,url1) {
-					let bch_url = url1;
-                    this.res.render('deposit.ejs', { user: this.req.user, imgUrlEth: eth_url,imgUrlBCH:bch_url});
+                    let bch_url = url1;
+                    let user = this.req.user;
+                    user.eth_address = this.row.eth_address;
+                    user.bch_address = this.row.bch_address;
+                    ETHTransaction.getETHBalanceByUserId(this.row.id,function (err,ethData) {
+                        user.eth_amount=ethData;
+                        BCHTransaction.getBCHBalanceByUserId(this.row.id,function (err,bchData) {
+                            user.bch_amount=bchData;
+                            this.res.render('deposit.ejs', { user: user, imgUrlEth: eth_url,imgUrlBCH:bch_url});
+                        }.bind({row:this.row,res:res,req:req,user:user}))
+                    }.bind({row:this.row,res:res,req:req,user:user}));
                 }.bind({row: rows[0],res:res,req:req}))
             }.bind({row: rows[0],res:res,req:req}))
         });
 	});
 
 	//Leo  eth转出接口
-	app.post('/ethwithdraw',function(req, res){
+	app.post('/ethwithdraw',isLoggedIn,function(req, res){
 		let Eth = require('./eth_transactions');
         Eth.withdrawETH(req.user.username,req.body.ethAddress,req.body.ethAmount,function (err,data) {
 			if(err) console.log(err);
 			else{
-                res.render('withdraw.ejs', { user: req.user,msg: "Coin was withdrawn as Ethereum. The transaction ID is "+data});
+ //               res.render('withdraw.ejs', { user: req.user,msg: "Coin was withdrawn as Ethereum. The transaction ID is "+data});
+                  res.redirect('/withdraw?eth_tx='+data,);
+
             }
         });
 
 	});
-    app.post('/bchwithdraw',function(req, res){
+    app.post('/bchwithdraw',isLoggedIn,function(req, res){
     	console.log(req.user);
         let Bch = require('./bch_transactions');
         Bch.withdrawBCH(req.user.username,req.body.bchAddress,req.body.bchAmount,function (err,data) {
             if(err) console.log(err);
             else{
-                res.render('withdraw.ejs', { user: req.user,msg: "Coin was withdrawn as Bitcoin Cash. The transaction ID is "+data});
+//                res.render('withdraw.ejs', { user: req.user,msg: "Coin was withdrawn as Bitcoin Cash. The transaction ID is "+data});
+                res.redirect('/withdraw?bch_tx='+data,);
             }
         });
 
     });
-    app.get('/withdraw',function(req, res){
+    app.get('/withdraw',isLoggedIn,function(req, res){
+        const DBService =require('./../service/db_service');
+        let ETHTransaction = require('./eth_transactions');
+        let BCHTransaction = require('./bch_transactions');
         console.log(req.body);
-        res.render('withdraw.ejs', { user: req.user, msg: "Withdraw Coin to Eth or Bch"});
+        ETHTransaction.getETHBalanceByUserId(req.user.id,function (err,ethData) {
+            this.req.user.eth_amount=ethData;
+            BCHTransaction.getBCHBalanceByUserId(this.req.user.id,function (err,bchData) {
+                this.req.user.bch_amount=bchData;
+                res.render('withdraw.ejs', { user: req.user});
+            }.bind({res:res,req:req}))
+        }.bind({res:res,req:req}));
+
+    });
+
+    app.get('/ajaxdeposit',isLoggedIn,function (req,res) {
+        const ETHTX= require('./eth_transactions');
+        ETHTX.getUnconfirmedDepositTxByUsername(req.user.username,function (err,data) {
+            if(err) console.log(err);
+            res.send(data);
+        })
+    });
+
+    app.get('/ajaxbchdeposit',isLoggedIn,function (req,res) {
+        const BCHTX= require('./bch_transactions');
+        BCHTX.getUnconfirmedDepositTxByUsername(req.user.username,function (err,data) {
+            if(err) console.log(err);
+            res.send(data);
+        })
+    });
+
+    app.get('/ajaxethbalance',isLoggedIn,function (req,res) {
+        const ETHTX= require('./eth_transactions');
+        ETHTX.getETHBalanceByUsername(req.user.username,function (err,data) {
+            if(err) console.log(err);
+            res.send({'ethBalance':data});
+        })
+    });
+
+    app.get('/ajaxbchbalance',isLoggedIn,function (req,res) {
+        const BCHTX= require('./bch_transactions');
+        BCHTX.getBCHBalanceByUserId(req.user.id,function (err,data) {
+            if(err) console.log(err);
+            res.send({'bchBalance':data});
+        })
+    });
+
+    app.get('/ajaxcoinbalance',isLoggedIn,function (req,res) {
+        const DBService = require('./../service/db_service');
+        DBService.getUserByUsername(req.user.username,function (err,data) {
+            if(err) console.log(err);
+            res.send({'coinBalance':data[0].coin});
+        })
+    });
+
+    app.get('/ajaxethtx',isLoggedIn,function (req,res) {
+        const ETHTX= require('./eth_transactions');
+        let returnTx=ETHTX.getETHTransactionByTxHash(req.query.eth_tx);
+        res.send(returnTx);
+    });
+
+    app.get('/ajaxbchtx',isLoggedIn,function (req,res) {
+        const BCHTX= require('./bch_transactions');
+        BCHTX.getBCHTransactionByTxHash(req.query.bch_tx,function (err,data) {
+            res.send(data);
+        });
     });
 };
-
-
-
 
 // route middleware to make sure
 function isLoggedIn(req, res, next) {

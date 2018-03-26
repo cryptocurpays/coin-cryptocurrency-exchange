@@ -1,4 +1,4 @@
-var BCHConfig = require('./../config/BCHConfig')//Bitcoin Cash Configurations
+var BCHConfig = require('./../config/bchconfig')//Bitcoin Cash Configurations
 
 const fs = require('fs');//File system
 
@@ -112,7 +112,6 @@ function updateUserToAddress(username) {
         }
     });
 };
-
 
 module.exports ={
    init:function(callback){

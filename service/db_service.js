@@ -20,6 +20,21 @@ function getUserByUsername(username,done) {
     });
 }
 
+function getUserByUseId(userId,done) {
+    connection.query("SELECT * FROM "+DBCONFIG.database+ "."+ DBCONFIG.users_table +" where id='"+userId+"'", function(err, rows){
+        if (err){
+            return done(err);
+        }
+        else if(rows.length==0){
+            return done("No users with this user id "+userId+" were found!");
+        }
+        else if(rows.length>1){
+            return done("More than one users with this id "+userId+" were found!");
+        }
+        return done(null, rows);
+    });
+}
+
 function getUserByEthAddress(eth_address,done) {
     connection.query("SELECT * FROM "+DBCONFIG.database+ "."+ DBCONFIG.users_table +" where eth_address='"+eth_address+"'", function(err, rows){
         if (err){
@@ -102,8 +117,8 @@ function addBCHWithdrawLog(userid, toAddress, coinAmount,status,done) {
     let from_address = BCHCONFIG.withdrawSourceAccount;
     let to_address = toAddress;
     let to_userId = userid;
-    let coin_value = coinAmount;
-    let bch_value = coinAmount / BCHCONFIG.coinsPerBCH;
+    let coin_value= coinAmount;
+    let bch_value = 100000000*coinAmount /BCHCONFIG.coinsPerBCH;
     let tx_status = status;
 
     let insertQuery = "INSERT INTO "+DBCONFIG.database+"."+ DBCONFIG.bch_withdraw_log+"( from_address, to_address, to_user_id, coin_value, bch_value, tx_status)" +
@@ -363,5 +378,6 @@ module.exports = {
     getETHDepositeTxsByUserId:getETHDepositeTxsByUserId,
     getETHWithdrawTxsByUserId:getETHWithdrawTxsByUserId,
     getBCHDepositeTxsByUserId:getBCHDepositeTxsByUserId,
-    getBCHWithdrawTxsByUserId:getBCHWithdrawTxsByUserId
+    getBCHWithdrawTxsByUserId:getBCHWithdrawTxsByUserId,
+    getUserByUseId:getUserByUseId
 };

@@ -10,7 +10,7 @@ const DBSERVICE = require('./../service/db_service');
 var web3;
 var latestCheckedBlock;
 var recipientAddresses;
-
+var unconfirmedDepositTxs;
 
 const withdrawLogStatus ={
     CREATED: 0,
@@ -38,6 +38,7 @@ function initLatestCheckedBlock() {
     })
 }
 
+
 function initRecipientAddresses() {
     DBSERVICE.getAllUsers(function (err,data) {
         if(!err){
@@ -61,16 +62,16 @@ function addRecipientAddresses(addressArray) {
 function checkBlockChainForMinedTxService() {
 
     let latestMinedBlock = web3.eth.getBlock('latest').number;
-
     if((typeof recipientAddresses !=='undefined')|| (typeof latestCheckedBlock!=='undefined')|| (typeof  web3!=='undefined')){
 
-        if(latestCheckedBlock===latestMinedBlock){
+        if(latestCheckedBlock>=latestMinedBlock-ETHCONFIG.minMinedRequirement){
             console.log('The lasted checked block is '+ latestMinedBlock+'. No new mined blocks........');
         }
         else
             checkDepositTxs(recipientAddresses,latestCheckedBlock+1,latestMinedBlock-ETHCONFIG.minMinedRequirement);
     }
     checkSubmittedWithdrawTxs();
+    unconfirmedDepositTxs =getUnconfirmedDepositTx(recipientAddresses);
 }
 
 function checkDepositTxs(myaccounts, startBlockNumber, endBlockNumber) {
@@ -120,6 +121,40 @@ function checkDepositTxs(myaccounts, startBlockNumber, endBlockNumber) {
                 latestCheckedBlock=i;
         }
     }
+}
+
+
+function getUnconfirmedDepositTx(addressArray) {
+
+    let latestMinedBlock = web3.eth.getBlock('latest').number;
+    let startBlock = latestMinedBlock- ETHCONFIG.minMinedRequirement;
+    let unconfirmedDepositTxs = [];
+    for(let i= startBlock;i<=latestMinedBlock;i++){
+        let block = web3.eth.getBlock(i, true);
+        block.transactions.forEach(function (tx) {
+            if(addressArray.indexOf(tx.to)>=0)
+            {
+                let returnTx ={'blockHash':tx.blockHash,'eth_address':tx.to,'confirmations':latestMinedBlock-tx.blockNumber,'need':20}
+                unconfirmedDepositTxs.push(returnTx)
+            }
+        });
+    }
+    return unconfirmedDepositTxs;
+}
+
+function getUnconfirmedDepositTxByUsername(username,callback) {
+    DBSERVICE.getUserByUsername(username,function (err,data) {
+        if(err) return callback(err);
+        let latestMinedBlock = web3.eth.getBlock('latest').number;
+        let startBlock = latestMinedBlock- ETHCONFIG.minMinedRequirement;
+        let eth_address= data[0].eth_address;
+        let unconfirmedTx = [];
+        for(let i= 0;i<unconfirmedDepositTxs.length;i++){
+            if(eth_address===unconfirmedDepositTxs[i].eth_address)
+                unconfirmedTx.push(unconfirmedDepositTxs[i]);
+        }
+        return callback(null,unconfirmedTx);
+    })
 }
 
 function withdrawETH(username, toAddress, coinAmount,callback) {
@@ -229,23 +264,48 @@ function getETHBalanceByUserId(userId,done) {
         }
         let totalWithdraw =0;
         for(let i=0;i<data.length;i++){
-            totalWithdraw+=data[0].value;
+            totalWithdraw+=data[i].value;
         }
         DBSERVICE.getETHWithdrawTxsByUserId(userId,function (err,data) {
             if(err){
                 return done(err);
             }
             for(let j=0;j<data.length;j++){
-                totalWithdraw-=data[0].eth_value;
+                totalWithdraw-=data[j].eth_value;
             }
             return done(null,totalWithdraw);
         }.bind({totalWithdraw:totalWithdraw}))
     })
 }
 
+function getETHBalanceByUsername(username,done) {
+  DBSERVICE.getUserByUsername(username,function (err,data) {
+      if(err) return done(err);
+      if(data.length!==1) return done("More than one user have this user name!");
+      else
+          getETHBalanceByUserId(data[0].id,function (err,data) {
+              if(err) return done(err);
+              return done(null,data)
+          });
+  })
+}
+
+function getETHTransactionByTxHash(txid) {
+    let returnTx= web3.eth.getTransaction(txid);
+    let latestMinedBlock = web3.eth.getBlock('latest').number;
+    let confirmations =0;
+    if(returnTx.blockNumber===null) confirmations=0;
+    else confirmations = latestMinedBlock-returnTx.blockNumber;
+    let tx={
+        hash:txid,
+        to:returnTx.to,
+        value: returnTx.value,
+        confirmations: confirmations
+    };
+    return tx;
+}
 module.exports = {
     init: function () {
-        
         initWeb3();
         initLatestCheckedBlock();
         initRecipientAddresses();
@@ -253,5 +313,8 @@ module.exports = {
     addRecipientAddresses: addRecipientAddresses,
     checkBlockChainForMinedTxService: checkBlockChainForMinedTxService,
     withdrawETH:withdrawETH,
-    getETHBalanceByUserId:getETHBalanceByUserId
+    getETHBalanceByUserId:getETHBalanceByUserId,
+    getUnconfirmedDepositTxByUsername:getUnconfirmedDepositTxByUsername,
+    getETHBalanceByUsername:getETHBalanceByUsername,
+    getETHTransactionByTxHash,getETHTransactionByTxHash
 }

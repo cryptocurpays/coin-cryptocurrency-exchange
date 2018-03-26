@@ -5,6 +5,7 @@
 	<title>Coins and Cryptocurrency Exchange</title>
 	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
 	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css">
+
 	<style>
 		body 		{ padding-top:80px; word-wrap:break-word; }
 	</style>
@@ -13,21 +14,20 @@
 <div class="container">
 
 	<div class="page-header text-center">
-		<h1><span class="fa fa-anchor"></span> Profile Page</h1>
+		<h1><span class="fa fa-bitcoin"></span> Profile Page</h1>
 		<a href="/logout" class="btn btn-default btn-sm">Logout</a>
 	</div>
 
 	<div class="row">
 		<div class="col-sm-6">
 			<div class="well">
-				<h3><span class="fa fa-user"></span> Local</h3>
+				<h3><span class="fa fa-user"></span> <%= user.username %></h3>
 
 					<p>
-						<strong>id</strong>: <%= user.id %><br>
-						<strong>username</strong>: <%= user.username %><br>
-						<strong>coin</strong>: <%= user.coin %><br>
-						<strong>eth_value (GWei)</strong>: <%= user.eth_value %><br>
-						<strong>bch_value       </strong>: <%= user.bch_value %>
+						<strong>ID</strong>: <%= user.id %><br>
+						<strong>Coin</strong>: <%= user.coin %><br>
+						<strong>Ethereum (GWei)</strong>: <%= user.eth_value %><br>
+						<strong>Bicoin Cash(Satoshi)</strong>: <%= user.bch_value %>
 					</p>
 
 			</div>
@@ -46,5 +46,6 @@
 	</script>
 
 </div>
+
 </body>
 </html>

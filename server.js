@@ -13,7 +13,7 @@ var passport = require('passport');
 var flash    = require('connect-flash');
 var ethConfig = require('./config/ethereum');
 
-
+app.use(express.static('public'));
 // Initiate Ethereum Keystore and Eth Web3 instance. Start to check node for new unrecorded transactions.
 var keystore = require('./service/keystoreeth');
 var Eth = require('./app/eth_transactions');
